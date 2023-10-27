@@ -1,12 +1,13 @@
 import pygame
 import numpy as np
+import time
 
 # Constants
 
-CELL_SIZE = 1
-GRID_WIDTH, GRID_HEIGHT = 800,600
-WIDTH, HEIGHT = GRID_WIDTH*CELL_SIZE, GRID_HEIGHT*CELL_SIZE
-FPS = 10
+CELL_SIZE = 10
+GRID_WIDTH, GRID_HEIGHT = 80,60
+WIDTH, HEIGHT = GRID_WIDTH*CELL_SIZE, GRID_HEIGHT*CELL_SIZE+56
+time_seq = 10
 RANDOM_MODE = False
 
 
@@ -40,7 +41,8 @@ def update_grid(grid):
     return new_grid
 
 # Function to draw the grid
-def draw_grid(screen, grid):
+def draw_grid(screen, grid,time_seq,pause):
+    police = pygame.font.Font(None, 36)
     screen.fill((0, 0, 0))
     for x in range(GRID_WIDTH):
         for y in range(GRID_HEIGHT):
@@ -50,6 +52,19 @@ def draw_grid(screen, grid):
                     (255, 255, 255),
                     (x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE),
                 )
+    if pause==False and time_seq<(10000000):
+            print(time_seq-0.0001)
+            texte = police.render("FPS : " + str(1/time_seq), True, (255, 0,0))
+    else:
+            texte = police.render("PAUSE", True, (0, 230,230))
+    position_texte = (10, HEIGHT+10-56)  # Remplacez par la position souhaitée
+    pygame.draw.rect(
+                    screen,
+                    (100, 100, 100),
+                    (0, GRID_HEIGHT*CELL_SIZE, WIDTH, 56),
+                )
+    screen.blit(texte, position_texte)
+    pygame.display.update() 
 
 # Main function
 def main():
@@ -62,16 +77,17 @@ def main():
 
     
     drawing = False
+    pause=False
+    actionEffectue=False
     grid = initialize_drawn_grid()
 
     running = True
-    import time
-
     
     
-    police = pygame.font.Font(None, 36)
+    
+    
     while running:
-        start_time = time.time()
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -85,20 +101,33 @@ def main():
                 x //= CELL_SIZE
                 y //= CELL_SIZE
                 grid[x, y] = 1
-
+            elif event.type == pygame.KEYDOWN:
+                if event.key== pygame.K_SPACE:
+                    if pause==True:
+                            pause = False
+                    elif pause==False:
+                            pause=True
+                        
         
-        if drawing==False:
+        
+        
+        if drawing==False and pause== False :
+            start_time = time.time()
             grid = update_grid(grid)
-        draw_grid(screen, grid)
+            end_time = time.time()
+
+        time_seq = end_time - start_time
+
+
+        draw_grid(screen, grid,time_seq,pause)
+        end_time=0
+        start_time=0
 
         pygame.display.flip()
-        """clock.tick(FPS)"""
+        """clock.tick(time_seq)"""
         end_time = time.time()
-        time_seq = end_time - start_time
-        texte = police.render("FPS : " + str(1/time_seq), True, (255, 0,0))
-        position_texte = (10, 10)  # Remplacez par la position souhaitée
-        screen.blit(texte, position_texte)
-        pygame.display.update() 
+        
+
 
     pygame.quit()
 
