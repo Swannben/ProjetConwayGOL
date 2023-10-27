@@ -1,6 +1,5 @@
 import pygame
 import numpy as np
-import time
 
 # Constants
 
@@ -8,10 +7,16 @@ CELL_SIZE = 1
 GRID_WIDTH, GRID_HEIGHT = 800,600
 WIDTH, HEIGHT = GRID_WIDTH*CELL_SIZE, GRID_HEIGHT*CELL_SIZE
 FPS = 10
+RANDOM_MODE = False
+
 
 # Function to initialize the grid with random values
-def initialize_grid():
+def initialize_random_grid():
     return np.random.choice([0, 1], size=(GRID_WIDTH, GRID_HEIGHT))
+
+# Function to initialize the grid with user-drawn cells
+def initialize_drawn_grid():
+    return np.zeros((GRID_WIDTH, GRID_HEIGHT), dtype=int)
 
 # Function to update the grid based on the rules of Conway's Game of Life
 def update_grid(grid):
@@ -55,7 +60,9 @@ def main():
 
     clock = pygame.time.Clock()
 
-    grid = initialize_grid()
+    
+    drawing = False
+    grid = initialize_drawn_grid()
 
     running = True
     import time
@@ -68,8 +75,20 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if not RANDOM_MODE:
+                    drawing = True
+            elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                drawing = False
+            elif event.type == pygame.MOUSEMOTION and drawing:
+                x, y = pygame.mouse.get_pos()
+                x //= CELL_SIZE
+                y //= CELL_SIZE
+                grid[x, y] = 1
 
-        grid = update_grid(grid)
+        
+        if drawing==False:
+            grid = update_grid(grid)
         draw_grid(screen, grid)
 
         pygame.display.flip()
