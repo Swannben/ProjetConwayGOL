@@ -7,6 +7,8 @@ CELL_SIZE = 3
 GRID_WIDTH, GRID_HEIGHT =200,200
 WIDTH, HEIGHT = GRID_WIDTH*CELL_SIZE, GRID_HEIGHT*CELL_SIZE
 FPS = 10
+RANDOM_MODE = False
+
 
 # Function to initialize the grid with random values
 def initialize_random_grid():
@@ -58,7 +60,7 @@ def main():
 
     clock = pygame.time.Clock()
 
-    random_mode = False
+    
     drawing = False
     grid = initialize_drawn_grid()
 
@@ -74,7 +76,7 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if not random_mode:
+                if not RANDOM_MODE:
                     drawing = True
             elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                 drawing = False
