@@ -3,9 +3,10 @@ import numpy as np
 import time
 
 # Constants
-WIDTH, HEIGHT = 800, 600
-CELL_SIZE = 20
-GRID_WIDTH, GRID_HEIGHT = WIDTH // CELL_SIZE, HEIGHT // CELL_SIZE
+
+CELL_SIZE = 3
+GRID_WIDTH, GRID_HEIGHT =200,200
+WIDTH, HEIGHT = GRID_WIDTH*CELL_SIZE, GRID_HEIGHT*CELL_SIZE
 FPS = 10
 
 # Function to initialize the grid with random values
@@ -57,7 +58,13 @@ def main():
     grid = initialize_grid()
 
     running = True
+    import time
+
+    
+    
+    police = pygame.font.Font(None, 36)
     while running:
+        start_time = time.time()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -66,7 +73,13 @@ def main():
         draw_grid(screen, grid)
 
         pygame.display.flip()
-        clock.tick(FPS)
+        """clock.tick(FPS)"""
+        end_time = time.time()
+        time_seq = end_time - start_time
+        texte = police.render("FPS : " + str(1/time_seq), True, (255, 0,0))
+        position_texte = (10, 10)  # Remplacez par la position souhaitée
+        screen.blit(texte, position_texte)
+        pygame.display.update() 
 
     pygame.quit()
 
