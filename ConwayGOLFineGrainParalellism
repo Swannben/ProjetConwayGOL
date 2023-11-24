@@ -1,18 +1,20 @@
+import threading
 import pygame
 import numpy as np
 import time
-import threading
 
 # If skander gave another version of the code, we can use it instead of this one
 
 # Constants  to have the different sizes to test we currently change them directly here 
 
 CELL_SIZE = 10
-GRID_WIDTH, GRID_HEIGHT = 80,60
+GRID_WIDTH, GRID_HEIGHT =10,10
 WIDTH, HEIGHT = GRID_WIDTH*CELL_SIZE, GRID_HEIGHT*CELL_SIZE+56
 time_seq = 10
 RANDOM_MODE = False
 
+#Global variables
+global colored,calculated,drawing,pause
 
 # Function to initialize the grid with random values
 def initialize_random_grid():
@@ -22,34 +24,56 @@ def initialize_random_grid():
 def initialize_drawn_grid():
     return np.zeros((GRID_WIDTH, GRID_HEIGHT), dtype=int)
 
-# Function to update the grid based on the rules of Conway's Game of Life
+def calculate_cell(grid,x,y,sem1,sem2):
+    global colored,calculated,drawing,pause
+    while True:
+        if drawing==False and pause== False :
+            while(colored!=0):
+                pass
+            neighbors = [
+                        grid[(x + i) % GRID_WIDTH, (y + j) % GRID_HEIGHT]
+                        for i in range(-1, 2)
+                        for j in range(-1, 2)
+                    ]
 
+            # Apply Conway's rules
+            num_neighbors = sum(neighbors) - grid[x, y]
+            if grid[x, y] == 1 and (num_neighbors < 2 or num_neighbors > 3):
+                value = 0
+            elif grid[x, y] == 0 and num_neighbors == 3:
+                value= 1
+            else:
+                value =grid[x,y]
+            sem1.acquire()
+            calculated+=1
+            sem1.release()
+            #after the semaphores are realeased we can update the grid
+            while(calculated!=GRID_WIDTH*GRID_HEIGHT):
+                pass
+            grid[x,y]=value
+            sem2.acquire()
+            colored+=1
+            sem2.release()
+
+# Function to update the grid based on the rules of Conway's Game of Life
 def update_grid(grid):
     new_grid = grid.copy()
 
-    def update_cell(x, y):
-        neighbors = [
-            grid[(x + i) % GRID_WIDTH, (y + j) % GRID_HEIGHT]
-            for i in range(-1, 2)
-            for j in range(-1, 2)
-        ]
-
-        # Apply Conway's rules
-        num_neighbors = sum(neighbors) - grid[x, y]
-        if grid[x, y] == 1 and (num_neighbors < 2 or num_neighbors > 3):
-            new_grid[x, y] = 0
-        elif grid[x, y] == 0 and num_neighbors == 3:
-            new_grid[x, y] = 1
-
-    threads = []
     for x in range(GRID_WIDTH):
         for y in range(GRID_HEIGHT):
-            thread = threading.Thread(target=update_cell, args=(x, y))
-            thread.start()
-            threads.append(thread)
+            
+            neighbors = [
+                grid[(x + i) % GRID_WIDTH, (y + j) % GRID_HEIGHT]
+                for i in range(-1, 2)
+                for j in range(-1, 2)
+            ]
 
-    for thread in threads:
-        thread.join()
+            # Apply Conway's rules
+            num_neighbors = sum(neighbors) - grid[x, y]
+            if grid[x, y] == 1 and (num_neighbors < 2 or num_neighbors > 3):
+                new_grid[x, y] = 0
+            elif grid[x, y] == 0 and num_neighbors == 3:
+                new_grid[x, y] = 1
 
     return new_grid
 
@@ -81,6 +105,8 @@ def draw_grid(screen, grid,time_seq,pause):
 # Main function
 def main():
     pygame.init()
+    global colored,calculated,drawing,pause
+
 
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("Conway's Game of Life")
@@ -90,11 +116,19 @@ def main():
     
     drawing = False
     pause=False
-    actionEffectue=False
     grid = initialize_drawn_grid()
 
     running = True
-    
+    colored=0
+    calculated=0
+    sem1=threading.Semaphore()
+    sem2=threading.Semaphore()
+    threads=[]
+    for x in range(GRID_WIDTH):
+        for y in range(GRID_HEIGHT):
+            threads.append(threading.Thread(target=calculate_cell,args=(grid,x,y,sem1,sem2)))
+    for t in threads:
+        t.start()
     
     
     
@@ -119,25 +153,16 @@ def main():
                             pause = False
                     elif pause==False:
                             pause=True
-                        
-        
-        
-        
-        if drawing==False and pause== False :
-            start_time = time.time()
-            grid = update_grid(grid)
-            end_time = time.time()
+            print("event")
+            end_time=time.time()
+            if colored==GRID_WIDTH*GRID_HEIGHT:
+                calculated=0
+                colored=0
+                start_time = time.time()
+                draw_grid(screen, grid,time_seq,pause)
+                print("grid updated")
 
-        time_seq = end_time - start_time
-
-
-        draw_grid(screen, grid,time_seq,pause)
-        end_time=0
-        start_time=0
-
-        pygame.display.flip()
-        """clock.tick(time_seq)"""
-        end_time = time.time()
+            pygame.display.flip()
         
 
 
