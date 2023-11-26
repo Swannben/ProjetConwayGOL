@@ -3,19 +3,25 @@ import pygame
 import numpy as np
 import time
 
-# If skander gave another version of the code, we can use it instead of this one
-
-# Constants  to have the different sizes to test we currently change them directly here 
-
 CELL_SIZE = 10
-GRID_WIDTH, GRID_HEIGHT =10,10
+GRID_WIDTH, GRID_HEIGHT = 6,6
 WIDTH, HEIGHT = GRID_WIDTH*CELL_SIZE, GRID_HEIGHT*CELL_SIZE+56
 time_seq = 10
 RANDOM_MODE = False
+drawing =False
+pause =False
+global nbColor
+global nbCalc
+global running
+running = False
+nbColor =0
+nbCalc =0
 
-#Global variables
-global colored,calculated,drawing,pause
 
+verrouCalc = threading.Lock()
+verrouColor = threading.Lock()
+
+        
 # Function to initialize the grid with random values
 def initialize_random_grid():
     return np.random.choice([0, 1], size=(GRID_WIDTH, GRID_HEIGHT))
@@ -24,60 +30,19 @@ def initialize_random_grid():
 def initialize_drawn_grid():
     return np.zeros((GRID_WIDTH, GRID_HEIGHT), dtype=int)
 
-def calculate_cell(grid,x,y,sem1,sem2):
-    global colored,calculated,drawing,pause
-    while True:
-        if drawing==False and pause== False :
-            while(colored!=0):
-                pass
-            neighbors = [
-                        grid[(x + i) % GRID_WIDTH, (y + j) % GRID_HEIGHT]
-                        for i in range(-1, 2)
-                        for j in range(-1, 2)
-                    ]
+def initialize_spaceShip_grid():
+    gridres=np.zeros((GRID_WIDTH, GRID_HEIGHT), dtype=int)
+    gridres[0,0] = 1
+    gridres[1,1]=1
+    gridres[1,2]=1
+    gridres[2,1]=1
+    gridres[2,0]=1
+    return gridres
 
-            # Apply Conway's rules
-            num_neighbors = sum(neighbors) - grid[x, y]
-            if grid[x, y] == 1 and (num_neighbors < 2 or num_neighbors > 3):
-                value = 0
-            elif grid[x, y] == 0 and num_neighbors == 3:
-                value= 1
-            else:
-                value =grid[x,y]
-            sem1.acquire()
-            calculated+=1
-            sem1.release()
-            #after the semaphores are realeased we can update the grid
-            while(calculated!=GRID_WIDTH*GRID_HEIGHT):
-                pass
-            grid[x,y]=value
-            sem2.acquire()
-            colored+=1
-            sem2.release()
+grid = initialize_spaceShip_grid()
 
-# Function to update the grid based on the rules of Conway's Game of Life
-def update_grid(grid):
-    new_grid = grid.copy()
 
-    for x in range(GRID_WIDTH):
-        for y in range(GRID_HEIGHT):
-            
-            neighbors = [
-                grid[(x + i) % GRID_WIDTH, (y + j) % GRID_HEIGHT]
-                for i in range(-1, 2)
-                for j in range(-1, 2)
-            ]
 
-            # Apply Conway's rules
-            num_neighbors = sum(neighbors) - grid[x, y]
-            if grid[x, y] == 1 and (num_neighbors < 2 or num_neighbors > 3):
-                new_grid[x, y] = 0
-            elif grid[x, y] == 0 and num_neighbors == 3:
-                new_grid[x, y] = 1
-
-    return new_grid
-
-# Function to draw the grid
 def draw_grid(screen, grid,time_seq,pause):
     police = pygame.font.Font(None, 36)
     screen.fill((0, 0, 0))
@@ -101,72 +66,74 @@ def draw_grid(screen, grid,time_seq,pause):
                 )
     screen.blit(texte, position_texte)
     pygame.display.update() 
-
-# Main function
+	
 def main():
+    global running
+    global nbColor
+    global nbCalc
+    running=True
+    print("Start")
     pygame.init()
-    global colored,calculated,drawing,pause
-
 
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("Conway's Game of Life")
-
+    draw_grid(screen,grid,1,pause)
     clock = pygame.time.Clock()
-
-    
-    drawing = False
-    pause=False
-    grid = initialize_drawn_grid()
-
-    running = True
-    colored=0
-    calculated=0
-    sem1=threading.Semaphore()
-    sem2=threading.Semaphore()
-    threads=[]
     for x in range(GRID_WIDTH):
         for y in range(GRID_HEIGHT):
-            threads.append(threading.Thread(target=calculate_cell,args=(grid,x,y,sem1,sem2)))
-    for t in threads:
-        t.start()
-    
-    
-    
+            threading.Thread(target=cell,args=(x,y)).start()
     while running:
-        
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if not RANDOM_MODE:
-                    drawing = True
-            elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-                drawing = False
-            elif event.type == pygame.MOUSEMOTION and drawing:
-                x, y = pygame.mouse.get_pos()
-                x //= CELL_SIZE
-                y //= CELL_SIZE
-                grid[x, y] = 1
-            elif event.type == pygame.KEYDOWN:
-                if event.key== pygame.K_SPACE:
-                    if pause==True:
-                            pause = False
-                    elif pause==False:
-                            pause=True
-            print("event")
-            end_time=time.time()
-            if colored==GRID_WIDTH*GRID_HEIGHT:
-                calculated=0
-                colored=0
+        start_time = time.time()
+        print("on va bienntot recommencer, nbColor est a", nbColor)
+        if nbColor==GRID_HEIGHT*GRID_WIDTH:
+            if drawing==False and pause== False :
+                end_time = time.time()
+                time_seq=end_time-start_time
                 start_time = time.time()
-                draw_grid(screen, grid,time_seq,pause)
-                print("grid updated")
+                nbColor =0
+                nbCalc=0
+            draw_grid(screen,grid,1,pause)
 
-            pygame.display.flip()
+               
+               
+          
+def cell(x,y):
+    global running
+    global nbColor
+    global nbCalc
+    while(running):
+        while(nbColor!=0):
+            pass
+        neighbors = [
+            grid[(x + i) % GRID_WIDTH, (y + j) % GRID_HEIGHT]
+            for i in range(-1, 2)
+            for j in range(-1, 2)
+            ]
+        num_neighbors = sum(neighbors) - grid[x, y]
+        nextState=grid[x, y]
+        if grid[x, y] == 1 and (num_neighbors < 2 or num_neighbors > 3):
+            nextState = 0
+        elif grid[x, y] == 0 and num_neighbors == 3:
+            nextState = 1
+        verrouCalc.acquire()
+        nbCalc+=1
+        print("nbCalc:",nbCalc)
+        verrouCalc.release()
+        while nbCalc != GRID_HEIGHT*GRID_WIDTH :
+             pass
+        grid[x,y]=nextState
+        try:
+            verrouColor.acquire()
+            nbColor+=1
+            print("nbColor:",nbColor)
+        finally:
+            verrouColor.release()
+        print("pret a recommencer !")
+
         
-
-
-    pygame.quit()
-
+          
+     
+     
 if __name__ == "__main__":
     main()
+
