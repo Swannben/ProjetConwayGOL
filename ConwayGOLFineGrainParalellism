@@ -56,8 +56,10 @@ def draw_grid(screen, grid,time_seq,pause):
                     (255, 255, 255),
                     (x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE),
                 )
-    if pause==False and time_seq<(10000000):
-            texte = police.render("FPS : " + str(time_seq), True, (255, 0,0))
+    if pause==False and time_seq==None:
+            texte = police.render("Chargement...", True, (100, 222,100))
+    elif pause==False and time_seq<(10000000):
+            texte = police.render("FPS : " + str(1/time_seq), True, (255, 0,0))
     else:
             texte = police.render("PAUSE", True, (0, 230,230))
     position_texte = (10, HEIGHT+10-56)  # Remplacez par la position souhaitée
@@ -74,6 +76,7 @@ def main():
     global nbColor
     global nbCalc
     global drawing
+    global pause
     global firstCheck
     running=True
     print("Start")
@@ -81,7 +84,7 @@ def main():
 
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("Conway's Game of Life")
-    draw_grid(screen,grid,1,pause)
+    draw_grid(screen,grid,None,pause)
     clock = pygame.time.Clock()
     for x in range(GRID_WIDTH):
         for y in range(GRID_HEIGHT):
@@ -94,6 +97,11 @@ def main():
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if not RANDOM_MODE:
                     drawing = True
+                    x, y = pygame.mouse.get_pos()
+                    x //= CELL_SIZE
+                    y //= CELL_SIZE
+                    grid[x, y] = 1
+                    draw_grid(screen,grid,100000000000,pause)
             elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                 drawing = False
             elif event.type == pygame.MOUSEMOTION and drawing:
@@ -101,6 +109,14 @@ def main():
                 x //= CELL_SIZE
                 y //= CELL_SIZE
                 grid[x, y] = 1
+                draw_grid(screen,grid,100000000000,pause)
+            elif event.type == pygame.KEYDOWN:
+                if event.key== pygame.K_SPACE:
+                    draw_grid(screen,grid,10000000000000,pause)
+                    if pause==True:
+                            pause = False
+                    elif pause==False:
+                            pause=True
         if nbColor==GRID_HEIGHT*GRID_WIDTH:
             if drawing==False and pause== False and firstCheck==True :
                 end_time = time.time()
@@ -122,31 +138,32 @@ def cell(x,y):
     global nbCalc
     global firstCheck
     while(running):
-        while nbColor!=0 or pause==True or drawing==True :
-            pass
-        neighbors = [
-            grid[(x + i) % GRID_WIDTH, (y + j) % GRID_HEIGHT]
-            for i in range(-1, 2)
-            for j in range(-1, 2)
-            ]
-        num_neighbors = sum(neighbors) - grid[x, y]
-        nextState=grid[x, y]
-        if grid[x, y] == 1 and (num_neighbors < 2 or num_neighbors > 3):
-            nextState = 0
-        elif grid[x, y] == 0 and num_neighbors == 3:
-            nextState = 1
-        verrouCalc.acquire()
-        nbCalc+=1
-        verrouCalc.release()
-        while nbCalc != GRID_HEIGHT*GRID_WIDTH :
-             pass
-        grid[x,y]=nextState
-        firstCheck=True
-        try:
-            verrouColor.acquire()
-            nbColor+=1
-        finally:
-            verrouColor.release()
+        if not pause and not drawing:
+            while nbColor!=0 or pause==True or drawing==True :
+                pass
+            neighbors = [
+                grid[(x + i) % GRID_WIDTH, (y + j) % GRID_HEIGHT]
+                for i in range(-1, 2)
+                for j in range(-1, 2)
+                ]
+            num_neighbors = sum(neighbors) - grid[x, y]
+            nextState=grid[x, y]
+            if grid[x, y] == 1 and (num_neighbors < 2 or num_neighbors > 3):
+                nextState = 0
+            elif grid[x, y] == 0 and num_neighbors == 3:
+                nextState = 1
+            verrouCalc.acquire()
+            nbCalc+=1
+            verrouCalc.release()
+            while nbCalc != GRID_HEIGHT*GRID_WIDTH :
+                pass
+            grid[x,y]=nextState
+            firstCheck=True
+            try:
+                verrouColor.acquire()
+                nbColor+=1
+            finally:
+                verrouColor.release()
 
         
           
