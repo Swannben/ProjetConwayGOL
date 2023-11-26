@@ -159,8 +159,8 @@ def main():
                 calculated=0
                 colored=0
                 start_time = time.time()
-                draw_grid(screen, grid,time_seq,pause)
                 print("grid updated")
+            draw_grid(screen, grid,time_seq,pause)
 
             pygame.display.flip()
         
