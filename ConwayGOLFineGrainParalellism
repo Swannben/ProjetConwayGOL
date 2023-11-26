@@ -92,7 +92,7 @@ def main():
                 start_time = time.time()
                 nbColor =0
                 nbCalc=0
-            draw_grid(screen,grid,1,pause)
+            draw_grid(screen,grid,time_seq,pause)
 
                
                
