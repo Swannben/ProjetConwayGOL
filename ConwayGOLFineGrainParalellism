@@ -3,7 +3,7 @@ import pygame
 import numpy as np
 import time
 
-CELL_SIZE = 10
+CELL_SIZE = 50
 GRID_WIDTH, GRID_HEIGHT = 6,6
 WIDTH, HEIGHT = GRID_WIDTH*CELL_SIZE, GRID_HEIGHT*CELL_SIZE+56
 time_seq = 10
@@ -16,10 +16,12 @@ global running
 running = False
 nbColor =0
 nbCalc =0
+firstCheck=True
 
 
 verrouCalc = threading.Lock()
 verrouColor = threading.Lock()
+
 
         
 # Function to initialize the grid with random values
@@ -55,7 +57,7 @@ def draw_grid(screen, grid,time_seq,pause):
                     (x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE),
                 )
     if pause==False and time_seq<(10000000):
-            texte = police.render("FPS : " + str(1/time_seq), True, (255, 0,0))
+            texte = police.render("FPS : " + str(time_seq), True, (255, 0,0))
     else:
             texte = police.render("PAUSE", True, (0, 230,230))
     position_texte = (10, HEIGHT+10-56)  # Remplacez par la position souhaitée
@@ -71,6 +73,8 @@ def main():
     global running
     global nbColor
     global nbCalc
+    global drawing
+    global firstCheck
     running=True
     print("Start")
     pygame.init()
@@ -82,17 +86,32 @@ def main():
     for x in range(GRID_WIDTH):
         for y in range(GRID_HEIGHT):
             threading.Thread(target=cell,args=(x,y)).start()
+    start_time = time.time()
     while running:
-        start_time = time.time()
-        print("on va bienntot recommencer, nbColor est a", nbColor)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if not RANDOM_MODE:
+                    drawing = True
+            elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                drawing = False
+            elif event.type == pygame.MOUSEMOTION and drawing:
+                x, y = pygame.mouse.get_pos()
+                x //= CELL_SIZE
+                y //= CELL_SIZE
+                grid[x, y] = 1
         if nbColor==GRID_HEIGHT*GRID_WIDTH:
-            if drawing==False and pause== False :
+            if drawing==False and pause== False and firstCheck==True :
                 end_time = time.time()
                 time_seq=end_time-start_time
                 start_time = time.time()
+                draw_grid(screen,grid,time_seq,pause)
                 nbColor =0
                 nbCalc=0
-            draw_grid(screen,grid,time_seq,pause)
+                firstCheck=False
+
+                
 
                
                
@@ -101,8 +120,9 @@ def cell(x,y):
     global running
     global nbColor
     global nbCalc
+    global firstCheck
     while(running):
-        while(nbColor!=0):
+        while nbColor!=0 or pause==True or drawing==True :
             pass
         neighbors = [
             grid[(x + i) % GRID_WIDTH, (y + j) % GRID_HEIGHT]
@@ -117,18 +137,16 @@ def cell(x,y):
             nextState = 1
         verrouCalc.acquire()
         nbCalc+=1
-        print("nbCalc:",nbCalc)
         verrouCalc.release()
         while nbCalc != GRID_HEIGHT*GRID_WIDTH :
              pass
         grid[x,y]=nextState
+        firstCheck=True
         try:
             verrouColor.acquire()
             nbColor+=1
-            print("nbColor:",nbColor)
         finally:
             verrouColor.release()
-        print("pret a recommencer !")
 
         
           
