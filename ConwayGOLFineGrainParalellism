@@ -2,9 +2,10 @@ import threading
 import pygame
 import numpy as np
 import time
+import random
 
-CELL_SIZE = 50
-GRID_WIDTH, GRID_HEIGHT = 6,6
+CELL_SIZE = 16
+GRID_WIDTH, GRID_HEIGHT = 32,32
 WIDTH, HEIGHT = GRID_WIDTH*CELL_SIZE, GRID_HEIGHT*CELL_SIZE+56
 time_seq = 10
 RANDOM_MODE = False
@@ -17,10 +18,14 @@ running = False
 nbColor =0
 nbCalc =0
 firstCheck=True
+createdThreads=0
 
 
 verrouCalc = threading.Lock()
 verrouColor = threading.Lock()
+debut = threading.Event()
+zeroColor=threading.Event()
+calcDone =threading.Event()
 
 
         
@@ -78,6 +83,8 @@ def main():
     global drawing
     global pause
     global firstCheck
+    global debut
+    global zeroColor
     running=True
     print("Start")
     pygame.init()
@@ -86,10 +93,15 @@ def main():
     pygame.display.set_caption("Conway's Game of Life")
     draw_grid(screen,grid,None,pause)
     clock = pygame.time.Clock()
+    createdThread=0
     for x in range(GRID_WIDTH):
         for y in range(GRID_HEIGHT):
+            createdThread+=1
+            print(createdThread,"/",GRID_HEIGHT*GRID_WIDTH)
             threading.Thread(target=cell,args=(x,y)).start()
+    debut.set()
     start_time = time.time()
+    zeroColor.set()
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -117,6 +129,8 @@ def main():
                             pause = False
                     elif pause==False:
                             pause=True
+        if nbCalc==GRID_HEIGHT*GRID_WIDTH:
+             calcDone.set()
         if nbColor==GRID_HEIGHT*GRID_WIDTH:
             if drawing==False and pause== False and firstCheck==True :
                 end_time = time.time()
@@ -125,6 +139,8 @@ def main():
                 draw_grid(screen,grid,time_seq,pause)
                 nbColor =0
                 nbCalc=0
+                calcDone.clear()
+                zeroColor.set()
                 firstCheck=False
 
                 
@@ -137,9 +153,13 @@ def cell(x,y):
     global nbColor
     global nbCalc
     global firstCheck
+    global debut
+    global zeroColor
+    debut.wait()
     while(running):
-        if not pause and not drawing:
-            while nbColor!=0 or pause==True or drawing==True :
+        zeroColor.wait()
+        if not pause and not drawing :
+            while pause==True or drawing==True :
                 pass
             neighbors = [
                 grid[(x + i) % GRID_WIDTH, (y + j) % GRID_HEIGHT]
@@ -155,12 +175,12 @@ def cell(x,y):
             verrouCalc.acquire()
             nbCalc+=1
             verrouCalc.release()
-            while nbCalc != GRID_HEIGHT*GRID_WIDTH :
-                pass
+            calcDone.wait()
             grid[x,y]=nextState
             firstCheck=True
             try:
                 verrouColor.acquire()
+                zeroColor.clear()
                 nbColor+=1
             finally:
                 verrouColor.release()
