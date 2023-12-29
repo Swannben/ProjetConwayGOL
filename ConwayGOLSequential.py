@@ -7,7 +7,7 @@ import time
 # Constants  to have the different sizes to test we currently change them directly here 
 
 CELL_SIZE = 10
-GRID_WIDTH, GRID_HEIGHT = 80,60
+GRID_WIDTH, GRID_HEIGHT = 64,64
 WIDTH, HEIGHT = GRID_WIDTH*CELL_SIZE, GRID_HEIGHT*CELL_SIZE+56
 time_seq = 10
 RANDOM_MODE = False
